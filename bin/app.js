@@ -44,6 +44,14 @@ function update(msg, model) {
     case "POP_URL":
       return { ...model, activeRoute: msg.payload };
 
+    case "TOGGLE_THEME":
+      const isDarkMode =
+        document.documentElement.getAttribute("data-theme") === "dark";
+      const nextTheme = isDarkMode ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", nextTheme);
+      localStorage.setItem("theme", nextTheme);
+      return model;
+
     default:
       return model;
   }
@@ -57,6 +65,20 @@ function view(model, dispatch) {
       ? aboutView(model, dispatch)
       : "",
   ]);
+}
+
+const lastTheme = localStorage.getItem("theme");
+const isDarkModePreferred = window.matchMedia(
+  "(prefers-color-scheme: dark)"
+).matches;
+if (lastTheme === "light" || lastTheme === "dark") {
+  document.documentElement.setAttribute("data-theme", lastTheme);
+} else {
+  if (isDarkModePreferred) {
+    document.documentElement.setAttribute("data-theme", "dark");
+  } else {
+    document.documentElement.setAttribute("data-theme", "light");
+  }
 }
 
 const $root = document.getElementById("root");

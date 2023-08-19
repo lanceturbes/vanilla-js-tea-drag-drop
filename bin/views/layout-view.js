@@ -33,6 +33,15 @@ export function layoutView(model, dispatch, children) {
             },
             ["About"]
           ),
+          h(
+            "button",
+            {
+              onclick: () => {
+                dispatch({ type: "TOGGLE_THEME" });
+              },
+            },
+            ["Toggle Theme"]
+          ),
         ]),
       ]),
     ]),
