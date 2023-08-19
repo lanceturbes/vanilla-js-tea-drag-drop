@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Element Factory</title>
     <script type="module" defer>
+      function swapItems(itemList, indexA, indexB) {
+        const items = itemList.slice();
+        const itemB = items[indexB];
+        items[indexB] = items[indexA];
+        items[indexA] = itemB;
+        return items;
+      }
+
       function h(type, attributes, children) {
         return { type, attributes, children };
       }
@@ -37,28 +45,14 @@
         node.replaceChildren(element);
       }
 
-      /** @param {DragEvent} event */
-      function dragEnter(event) {
-        event.preventDefault();
-      }
-
-      /** @param {DragEvent} event */
-      function dragOver(event) {
-        event.preventDefault();
-      }
-
-      /** @param {DragEvent} event */
-      function dragEnd(event) {
-        event.preventDefault();
-      }
-
-      /** @param {DragEvent} event */
-      function dragStart(event) {
-        event.preventDefault();
-      }
+      // "state" object to keep track of things that should not cause re-renders
+      const data = {
+        draggedIndex: null,
+      };
 
       function init() {
         return {
+          count: 0,
           itemList: [
             { id: 0, name: "Apple" },
             { id: 1, name: "Banana" },
@@ -69,9 +63,19 @@
 
       function update(msg, model) {
         switch (msg.type) {
-          case "SAY_HELLO":
-            console.log("HI");
-            return model;
+          case "INCREMENT":
+            return { ...model, count: model.count + 1 };
+          case "DRAG_END":
+            return msg.payload === null || msg.payload === undefined
+              ? model
+              : {
+                  ...model,
+                  itemList: swapItems(
+                    model.itemList,
+                    data.draggedIndex,
+                    msg.payload
+                  ),
+                };
           default:
             return model;
         }
@@ -79,24 +83,40 @@
 
       function view(model, dispatch) {
         return h("div", null, [
-          h("button", { onclick: () => dispatch({ type: "SAY_HELLO" }) }, [
-            "Button",
-          ]),
+          h(
+            "button",
+            {
+              onclick: () => {
+                dispatch({ type: "INCREMENT" });
+              },
+            },
+            [`Count: ${model.count}`]
+          ),
           h(
             "ul",
             null,
-            model.itemList.map(({ id, name }, i) =>
+            model.itemList.map((item, i) =>
               h(
                 "li",
                 {
                   draggable: "true",
-                  id: `item-${id}`,
-                  ondragenter: dragEnter,
-                  ondragover: dragOver,
-                  ondragstart: dragStart,
-                  ondragover: dragOver,
+                  id: `item-${item.id}`,
+                  ondragstart: (event) => {
+                    data.draggedIndex = i;
+                  },
+                  ondrop: (event) => {
+                    event.preventDefault();
+                    dispatch({ type: "DRAG_END", payload: i });
+                  },
+                  ondragenter: (event) => {
+                    event.preventDefault();
+                  },
+                  ondragover: (event) => {
+                    event.preventDefault();
+                    event.dataTransfer.effectAllowed = "move";
+                  },
                 },
-                [name]
+                [item.name]
               )
             )
           ),
@@ -107,14 +127,14 @@
         const { init, update, view } = options;
         let model = init();
 
-        console.log("INITIAL =>", model);
-
         function dispatch(msg) {
           model = update(msg, model);
-          render(createElement(view(model, dispatch)), node);
+          const nextView = view(model, dispatch);
+          render(createElement(nextView), node);
         }
 
-        render(createElement(view(model, dispatch)), node);
+        const initialView = view(model, dispatch);
+        render(createElement(initialView), node);
       }
 
       const rootNode = document.getElementById("root");
