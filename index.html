@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Element Factory</title>
+    <script type="module" defer>
+      function h(type, attributes, children) {
+        return { type, attributes, children };
+      }
+
+      function createElement({ type, attributes, children }) {
+        const el = document.createElement(type);
+
+        for (const attr in attributes) {
+          const value = attributes[attr];
+
+          if (attr.startsWith("on") && typeof value === "function") {
+            el.addEventListener(attr.slice(2), value);
+          } else {
+            el.setAttribute(attr, value);
+          }
+        }
+
+        for (const child of children) {
+          if (typeof child === "string") {
+            el.appendChild(document.createTextNode(child));
+          } else {
+            el.appendChild(createElement(child));
+          }
+        }
+
+        return el;
+      }
+
+      function render(element, node) {
+        node.replaceChildren(element);
+      }
+
+      /** @param {DragEvent} event */
+      function dragEnter(event) {
+        event.preventDefault();
+      }
+
+      /** @param {DragEvent} event */
+      function dragOver(event) {
+        event.preventDefault();
+      }
+
+      /** @param {DragEvent} event */
+      function dragEnd(event) {
+        event.preventDefault();
+      }
+
+      /** @param {DragEvent} event */
+      function dragStart(event) {
+        event.preventDefault();
+      }
+
+      function init() {
+        return {
+          itemList: [
+            { id: 0, name: "Apple" },
+            { id: 1, name: "Banana" },
+            { id: 2, name: "Cherry" },
+          ],
+        };
+      }
+
+      function update(msg, model) {
+        switch (msg.type) {
+          case "SAY_HELLO":
+            console.log("HI");
+            return model;
+          default:
+            return model;
+        }
+      }
+
+      function view(model, dispatch) {
+        return h("div", null, [
+          h("button", { onclick: () => dispatch({ type: "SAY_HELLO" }) }, [
+            "Button",
+          ]),
+          h(
+            "ul",
+            null,
+            model.itemList.map(({ id, name }, i) =>
+              h(
+                "li",
+                {
+                  draggable: "true",
+                  id: `item-${id}`,
+                  ondragenter: dragEnter,
+                  ondragover: dragOver,
+                  ondragstart: dragStart,
+                  ondragover: dragOver,
+                },
+                [name]
+              )
+            )
+          ),
+        ]);
+      }
+
+      function main(options, node) {
+        const { init, update, view } = options;
+        let model = init();
+
+        console.log("INITIAL =>", model);
+
+        function dispatch(msg) {
+          model = update(msg, model);
+          render(createElement(view(model, dispatch)), node);
+        }
+
+        render(createElement(view(model, dispatch)), node);
+      }
+
+      const rootNode = document.getElementById("root");
+      main({ init, update, view }, rootNode);
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
