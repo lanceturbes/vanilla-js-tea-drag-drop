@@ -25,15 +25,7 @@
         const { type, attributes, children } = element;
         const $el = document.createElement(type);
 
-        for (const attr in attributes) {
-          const value = attributes[attr];
-
-          if (attr.startsWith("on") && typeof value === "function") {
-            $el.addEventListener(attr.slice(2), value);
-          } else {
-            $el.setAttribute(attr, value);
-          }
-        }
+        setAttributes($el, attributes);
 
         for (const child of children) {
           $el.appendChild(renderNode(child));
@@ -88,11 +80,80 @@
         return h(
           "div",
           null,
-          Array.from({ length: 500 }, () => junkView(model, dispatch))
+          Array.from({ length: 1000 }, () => junkView(model, dispatch))
         );
       }
 
       /**
+       * @param {string} attributeName
+       */
+      function isEventAttribute(attributeName) {
+        return attributeName.startsWith("on");
+      }
+
+      /**
+       * @param {string} attributeName
+       */
+      function getEventTypeFromAttributeName(attributeName) {
+        return attributeName.slice(2).toLowerCase();
+      }
+
+      /**
+       * @param {HTMLElement} $node
+       * @param {string} attributeName
+       * @param {string | Function} value
+       */
+      function removeAttribute($node, attributeName, value) {
+        if (isEventAttribute(attributeName)) {
+          const eventName = getEventTypeFromAttributeName(attributeName);
+          $node.removeEventListener(eventName, value);
+        } else {
+          $node.removeAttribute(attributeName);
+        }
+      }
+
+      /**
+       * @param {HTMLElement} $node
+       * @param {string} attributeName
+       * @param {string | Function} value
+       * @param {string | Function} [previousValue]
+       */
+      function setAttribute($node, attributeName, value, previousValue) {
+        if (isEventAttribute(attributeName)) {
+          if (previousValue) {
+            removeAttribute($node, attributeName, previousValue);
+          }
+
+          const eventName = getEventTypeFromAttributeName(attributeName);
+          $node.addEventListener(eventName, value);
+        } else {
+          $node.setAttribute(attributeName, value);
+        }
+      }
+
+      /**
+       * @param {HTMLElement} $node
+       * @param {Object.<string, string | Function>} attributes
+       * @param {Object.<string, string | Function>} [oldAttributes]
+       */
+      function setAttributes($node, attributes, oldAttributes = {}) {
+        for (const [key, value] of Object.entries(oldAttributes)) {
+          if (!(key in attributes)) {
+            removeAttribute($node, key, value);
+          }
+        }
+
+        for (const [key, value] of Object.entries(attributes)) {
+          if (oldAttributes[key] === value) {
+            continue;
+          }
+
+          setAttribute($node, key, value, oldAttributes[key]);
+        }
+      }
+
+      /**
+       * @param {HTMLElement} $node
        * @see https://github.com/matvp91/lolvdom/blob/master/src/vdom/diff.js
        */
       function diff($node, tree, prevTree) {
@@ -125,6 +186,8 @@
         for (const child of tree.children.slice(prevTree.children.length)) {
           $node.append(renderNode(child));
         }
+
+        setAttributes($node, tree.attributes, prevTree.attributes);
       }
 
       function junkView(model, dispatch) {
@@ -169,18 +232,16 @@
       function main(options, $node) {
         const { init, update, view } = options;
         let model = init();
+        let currentView = view(model, dispatch);
 
         function dispatch(msg) {
-          const oldView = view(model, dispatch);
-
           model = update(msg, model);
           const newView = view(model, dispatch);
-
-          diff($node.firstChild, newView, oldView);
+          diff($node.firstChild, newView, currentView);
+          currentView = newView;
         }
 
-        const initialView = view(model, dispatch);
-        render(renderNode(initialView), $node);
+        render(renderNode(currentView), $node);
       }
 
       const $rootNode = document.getElementById("root");
