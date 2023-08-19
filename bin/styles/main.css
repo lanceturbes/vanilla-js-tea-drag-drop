@@ -1,0 +1,11 @@
+.header--link {
+  cursor: pointer;
+  text-decoration: underline;
+  color: blue;
+}
+
+.header--link-active {
+  cursor: auto;
+  color: black;
+  font-weight: bold;
+}

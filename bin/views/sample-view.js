@@ -1,4 +1,4 @@
-import { createElement as h } from "@/vdom";
+import { createElement as h } from "@/lib/vdom";
 import data from "../data.js";
 
 export function sampleView(model, dispatch) {
