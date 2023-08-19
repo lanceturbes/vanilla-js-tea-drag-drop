@@ -1,4 +1,5 @@
 import { createElement as h } from "@/vdom";
+import data from "../data.js";
 
 export function sampleView(model, dispatch) {
   return h("div", null, [

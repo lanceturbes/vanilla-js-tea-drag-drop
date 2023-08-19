@@ -1,9 +1,7 @@
 import { swapItems } from "@/core";
 import { createApp, createElement as h } from "@/vdom";
 import { sampleView } from "@/views";
-
-// "state" object to keep track of things that should not cause re-renders
-const data = { draggedIndex: null };
+import data from "./data.js";
 
 function init() {
   return {
