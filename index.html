@@ -14,31 +14,24 @@
       }
 
       function h(type, attributes, children) {
-        return { type, attributes, children };
+        return { type, attributes: attributes ?? {}, children };
       }
 
-      function createElement({ type, attributes, children }) {
-        const el = document.createElement(type);
-
-        for (const attr in attributes) {
-          const value = attributes[attr];
-
-          if (attr.startsWith("on") && typeof value === "function") {
-            el.addEventListener(attr.slice(2), value);
-          } else {
-            el.setAttribute(attr, value);
-          }
+      function renderNode(element) {
+        if (typeof element === "string") {
+          return document.createTextNode(element);
         }
+
+        const { type, attributes, children } = element;
+        const $el = document.createElement(type);
+
+        setAttributes($el, attributes);
 
         for (const child of children) {
-          if (typeof child === "string") {
-            el.appendChild(document.createTextNode(child));
-          } else {
-            el.appendChild(createElement(child));
-          }
+          $el.appendChild(renderNode(child));
         }
 
-        return el;
+        return $el;
       }
 
       function render(element, node) {
@@ -65,6 +58,7 @@
         switch (msg.type) {
           case "INCREMENT":
             return { ...model, count: model.count + 1 };
+
           case "DRAG_END":
             return msg.payload === null || msg.payload === undefined
               ? model
@@ -76,22 +70,131 @@
                     msg.payload
                   ),
                 };
+
           default:
             return model;
         }
       }
 
       function view(model, dispatch) {
+        return h(
+          "div",
+          null,
+          Array.from({ length: 1000 }, () => junkView(model, dispatch))
+        );
+      }
+
+      /**
+       * @param {string} attributeName
+       */
+      function isEventAttribute(attributeName) {
+        return attributeName.startsWith("on");
+      }
+
+      /**
+       * @param {string} attributeName
+       */
+      function getEventTypeFromAttributeName(attributeName) {
+        return attributeName.slice(2).toLowerCase();
+      }
+
+      /**
+       * @param {HTMLElement} $node
+       * @param {string} attributeName
+       * @param {string | Function} value
+       */
+      function removeAttribute($node, attributeName, value) {
+        if (isEventAttribute(attributeName)) {
+          const eventName = getEventTypeFromAttributeName(attributeName);
+          $node.removeEventListener(eventName, value);
+        } else {
+          $node.removeAttribute(attributeName);
+        }
+      }
+
+      /**
+       * @param {HTMLElement} $node
+       * @param {string} attributeName
+       * @param {string | Function} value
+       * @param {string | Function} [previousValue]
+       */
+      function setAttribute($node, attributeName, value, previousValue) {
+        if (isEventAttribute(attributeName)) {
+          if (previousValue) {
+            removeAttribute($node, attributeName, previousValue);
+          }
+
+          const eventName = getEventTypeFromAttributeName(attributeName);
+          $node.addEventListener(eventName, value);
+        } else {
+          $node.setAttribute(attributeName, value);
+        }
+      }
+
+      /**
+       * @param {HTMLElement} $node
+       * @param {Object.<string, string | Function>} attributes
+       * @param {Object.<string, string | Function>} [oldAttributes]
+       */
+      function setAttributes($node, attributes, oldAttributes = {}) {
+        for (const [key, value] of Object.entries(oldAttributes)) {
+          if (!(key in attributes)) {
+            removeAttribute($node, key, value);
+          }
+        }
+
+        for (const [key, value] of Object.entries(attributes)) {
+          if (oldAttributes[key] === value) {
+            continue;
+          }
+
+          setAttribute($node, key, value, oldAttributes[key]);
+        }
+      }
+
+      /**
+       * @param {HTMLElement} $node
+       * @see https://github.com/matvp91/lolvdom/blob/master/src/vdom/diff.js
+       */
+      function diff($node, tree, prevTree) {
+        // If next tree is missing, delete node
+        if (!tree) {
+          $node.remove();
+          return;
+        }
+
+        // If next tree is string and does not match previous tree, replace
+        if (typeof tree === "string" || typeof prevTree === "string") {
+          if (tree !== prevTree) {
+            $node.replaceWith(renderNode(tree));
+          }
+          return;
+        }
+
+        // If next tree is different tag, replace
+        if (tree.type !== prevTree.type) {
+          $node.replaceWith(renderNode(tree));
+          return;
+        }
+
+        // If only children are different, replace them
+        prevTree.children.forEach((prevChild, i) => {
+          diff($node.childNodes[i], tree.children[i], prevChild);
+        });
+
+        // Append any extra elements that were new vs last time
+        for (const child of tree.children.slice(prevTree.children.length)) {
+          $node.append(renderNode(child));
+        }
+
+        setAttributes($node, tree.attributes, prevTree.attributes);
+      }
+
+      function junkView(model, dispatch) {
         return h("div", null, [
-          h(
-            "button",
-            {
-              onclick: () => {
-                dispatch({ type: "INCREMENT" });
-              },
-            },
-            [`Count: ${model.count}`]
-          ),
+          h("button", { onclick: () => dispatch({ type: "INCREMENT" }) }, [
+            `Count: ${model.count}`,
+          ]),
           h(
             "ul",
             null,
@@ -123,22 +226,26 @@
         ]);
       }
 
-      function main(options, node) {
+      /**
+       * @see https://github.com/dwyl/learn-elm-architecture-in-javascript
+       */
+      function main(options, $node) {
         const { init, update, view } = options;
         let model = init();
+        let currentView = view(model, dispatch);
 
         function dispatch(msg) {
           model = update(msg, model);
-          const nextView = view(model, dispatch);
-          render(createElement(nextView), node);
+          const newView = view(model, dispatch);
+          diff($node.firstChild, newView, currentView);
+          currentView = newView;
         }
 
-        const initialView = view(model, dispatch);
-        render(createElement(initialView), node);
+        render(renderNode(currentView), $node);
       }
 
-      const rootNode = document.getElementById("root");
-      main({ init, update, view }, rootNode);
+      const $rootNode = document.getElementById("root");
+      main({ init, update, view }, $rootNode);
     </script>
   </head>
   <body>
