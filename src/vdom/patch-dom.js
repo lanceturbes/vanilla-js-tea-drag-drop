@@ -7,13 +7,18 @@ import setAttributes from "./set-attributes.js";
  */
 export function patchDOM($node, tree, prevTree) {
   // If next tree is missing, delete node
-  if (!tree) {
+  if (tree === undefined || tree === null) {
     $node.remove();
     return;
   }
 
   // If next tree is string and does not match previous tree, replace
-  if (typeof tree === "string" || typeof prevTree === "string") {
+  if (
+    typeof tree === "string" ||
+    typeof prevTree === "string" ||
+    typeof tree === "number" ||
+    typeof prevTree === "number"
+  ) {
     if (tree !== prevTree) {
       $node.replaceWith(renderElement(tree));
     }

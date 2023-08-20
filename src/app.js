@@ -1,6 +1,8 @@
-import { swapItems } from "@/lib/core";
-import { createApp } from "@/lib/vdom";
-import { aboutView, homeView, layoutView } from "@/bin/views";
+import swapItems from "./core/swap-items.js";
+import createApp from "./vdom/create-app.js";
+import aboutView from "./views/about-view.js";
+import homeView from "./views/home-view.js";
+import layoutView from "./views/layout-view.js";
 import data from "./data.js";
 
 const validRoutes = new Set(["/", "/about"]);
@@ -58,13 +60,15 @@ function update(msg, model) {
 }
 
 function view(model, dispatch) {
-  return layoutView(model, dispatch, [
+  return layoutView(
+    model,
+    dispatch,
     model.activeRoute === "/"
       ? homeView(model, dispatch)
       : model.activeRoute === "/about"
       ? aboutView(model, dispatch)
-      : "",
-  ]);
+      : ""
+  );
 }
 
 const lastTheme = localStorage.getItem("theme");

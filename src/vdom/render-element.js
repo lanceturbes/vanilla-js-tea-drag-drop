@@ -1,8 +1,8 @@
 import setAttributes from "./set-attributes.js";
 
 export function renderElement(element) {
-  if (typeof element === "string") {
-    return document.createTextNode(element);
+  if (typeof element === "string" || typeof element === "number") {
+    return document.createTextNode(String(element));
   }
 
   const { type, attributes, children } = element;

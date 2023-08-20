@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "build:watch": "babel --watch src -d dist",
+    "build": "babel src -d dist"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.22.10",
+    "@babel/core": "^7.22.10",
+    "@babel/plugin-transform-react-jsx": "^7.22.5",
+    "@babel/preset-env": "^7.22.10"
+  }
+}
